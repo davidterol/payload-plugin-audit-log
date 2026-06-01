@@ -1,19 +1,25 @@
 {
-  "name": "payload-plugin-audit-log",
+  "name": "@fumh_terol/payload-plugin-audit-log",
   "version": "1.0.0",
   "description": "Audit log plugin for Payload CMS - tracks field-level changes on documents",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "publishConfig": {
+    "access": "public"
+  },
   "exports": {
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc --emitDeclarationOnly --outDir dist && tsc",
+    "build:swc": "swc ./src -d ./dist --config-file .swcrc --strip-leading-paths",
     "clean": "rimraf dist",
     "prepublishOnly": "npm run clean && npm run build"
   },
@@ -21,13 +27,24 @@
     "@payloadcms/translations": "^3.0.0"
   },
   "devDependencies": {
+    "@types/react": "^18.2.0",
     "payload": "^3.0.0",
+    "react": "^18.2.0",
     "rimraf": "^5.0.0",
     "typescript": "^5.0.0"
   },
   "peerDependencies": {
-    "payload": "^3.0.0"
+    "payload": "^3.0.0",
+    "react": "^18.0.0 || ^19.0.0"
   },
-  "keywords": ["payload", "cms", "audit", "log", "history", "tracking"],
+  "keywords": [
+    "payload",
+    "cms",
+    "audit",
+    "log",
+    "history",
+    "tracking"
+  ],
   "license": "MIT"
 }
+

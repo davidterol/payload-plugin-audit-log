@@ -1,10 +1,31 @@
-import type { Config, Plugin } from 'payload'
-import type { SanitizedAuditLogConfig, ChangesLogEntry } from '../../types.js'
+import type { Config } from 'payload'
+import type { SanitizedAuditLogConfig } from '../../types.js'
 import { createAuditLogCollection } from '../../collections/audit-logs.js'
-import { ChangesLogField } from './Component.js'
 import { createAuditHooks } from './hooks.js'
 
-export const createChangesLogField = (config: SanitizedAuditLogConfig) => {
+interface ChangesLogFieldConfig {
+  name: string
+  type: 'array'
+  admin: {
+    description: string
+    readOnly: boolean
+    components: {
+      Field: string
+    }
+  }
+  fields: Array<{
+    name: string
+    type: string
+    admin?: Record<string, unknown>
+    options?: Array<{ label: string; value: string }>
+    fields?: Array<{
+      name: string
+      type: string
+    }>
+  }>
+}
+
+export const createChangesLogField = (config: SanitizedAuditLogConfig): ChangesLogFieldConfig => {
   const fieldName = `${config.auditCollectionSlug.replace(/-/g, '_')}_changes`
 
   return {
@@ -14,7 +35,7 @@ export const createChangesLogField = (config: SanitizedAuditLogConfig) => {
       description: 'History of changes made to this document',
       readOnly: true,
       components: {
-        Field: ChangesLogField,
+        Field: '/fields/ChangesLog/Component#ChangesLogField',
       },
     },
     fields: [
@@ -28,7 +49,12 @@ export const createChangesLogField = (config: SanitizedAuditLogConfig) => {
       {
         name: 'operation',
         type: 'select',
-        options: ['create', 'update', 'delete', 'restore'],
+        options: [
+          { label: 'Creado', value: 'create' },
+          { label: 'Actualizado', value: 'update' },
+          { label: 'Eliminado', value: 'delete' },
+          { label: 'Restaurado', value: 'restore' },
+        ],
         admin: {
           width: '100px',
         },
@@ -54,48 +80,27 @@ export const createChangesLogField = (config: SanitizedAuditLogConfig) => {
         ],
       },
     ],
-    hooks: {
-      afterRead: [
-        async ({ req, siblingData, data }) => {
-          if (siblingData?.id || data?.id) {
-            const docId = siblingData?.id || data?.id
-            const collectionSlug = config.watch?.find(w => 
-              req.payload.collections && Object.keys(req.payload.collections).some(
-                key => key === siblingData?.collectionSlug || key === data?.collectionSlug
-              )
-            )?.collection
-
-            if (!collectionSlug) return siblingData
-
-            const auditLogs = await req.payload.find({
-              collection: config.auditCollectionSlug,
-              where: {
-                documentId: { equals: typeof docId === 'string' ? docId : String(docId) },
-              },
-              limit: 100,
-              sort: '-timestamp',
-              req,
-            })
-
-            const changesLog: ChangesLogEntry[] = auditLogs.docs.map((log: any) => ({
-              timestamp: log.timestamp,
-              operation: log.operation,
-              userId: log.userId,
-              changes: log.changes,
-            }))
-
-            return changesLog
-          }
-          return siblingData
-        },
-      ],
-    },
   }
 }
 
-export const addAuditPlugin = (pluginConfig: SanitizedAuditLogConfig): Plugin =>
+interface HookConfig {
+  collectionSlug: string
+  auditCollectionSlug: string
+  fieldsToTrack: string[] | null
+  trackedFields: Record<string, string[]>
+  logUser: boolean
+}
+
+export const addAuditPlugin = (pluginConfig: HookConfig): ((incomingConfig: Config) => Config) =>
   (incomingConfig: Config): Config => {
-    const auditCollection = createAuditLogCollection(pluginConfig)
+    const auditCollection = createAuditLogCollection({
+      auditCollectionSlug: pluginConfig.auditCollectionSlug as SanitizedAuditLogConfig['auditCollectionSlug'],
+      watch: [],
+      trackedFields: {},
+      logUser: true,
+      logTimestamp: true,
+      includeDiffs: true,
+    })
 
     let finalConfig: Config = {
       ...incomingConfig,
@@ -105,20 +110,20 @@ export const addAuditPlugin = (pluginConfig: SanitizedAuditLogConfig): Plugin =>
     finalConfig = {
       ...finalConfig,
       collections: finalConfig.collections?.map((collection) => {
-        const watchedConfig = pluginConfig.watch?.find((w) => w.collection === collection.slug)
-
-        if (watchedConfig) {
-          const changesLogField = createChangesLogField(pluginConfig)
-
-          collection.fields = [...(collection.fields || []), changesLogField as any]
-
-          const hooks = createAuditHooks({
-            collectionSlug: collection.slug,
-            auditCollectionSlug: pluginConfig.auditCollectionSlug,
-            fieldsToTrack: watchedConfig.fields,
-            trackedFields: pluginConfig.trackedFields,
-            logUser: pluginConfig.logUser,
+        if (collection.slug === pluginConfig.collectionSlug) {
+          const changesLogField = createChangesLogField({
+            auditCollectionSlug: pluginConfig.auditCollectionSlug as SanitizedAuditLogConfig['auditCollectionSlug'],
+            watch: [],
+            trackedFields: {},
+            logUser: true,
+            logTimestamp: true,
+            includeDiffs: true,
           })
+
+          const newField = changesLogField as unknown as Parameters<typeof collection.fields.push>[0]
+          collection.fields = [...(collection.fields || []), newField]
+
+          const hooks = createAuditHooks(pluginConfig)
 
           collection.hooks = {
             ...collection.hooks,

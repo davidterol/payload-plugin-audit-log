@@ -2,7 +2,8 @@ import type { Config, Plugin } from 'payload'
 import type { AuditLogConfig, SanitizedAuditLogConfig } from './types.js'
 import { sanitizePluginConfig } from './sanitize.js'
 import { createAuditLogCollection } from './collections/audit-logs.js'
-import { createChangesLogField, addAuditHooks } from './fields/ChangesLog/index.js'
+import { createChangesLogField } from './fields/ChangesLog/index.js'
+import { createAuditHooks } from './fields/ChangesLog/hooks.js'
 
 export const auditLogPlugin =
   (pluginConfig: AuditLogConfig): Plugin =>
@@ -10,9 +11,6 @@ export const auditLogPlugin =
     const config = sanitizePluginConfig({ pluginConfig })
 
     const auditCollection = createAuditLogCollection(config)
-    const changesLogField = createChangesLogField(config)
-
-    const watchedCollections: string[] = []
 
     let finalConfig: Config = {
       ...incomingConfig,
@@ -25,22 +23,22 @@ export const auditLogPlugin =
         const watchedConfig = config.watch?.find((w) => w.collection === collection.slug)
 
         if (watchedConfig) {
-          watchedCollections.push(collection.slug)
+          const changesLogField = createChangesLogField(config)
 
-          const fieldsToTrack = watchedConfig.fields || null
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          collection.fields = [...(collection.fields || []), changesLogField as any]
 
-          collection.fields = [...(collection.fields || []), changesLogField]
+          const hooks = createAuditHooks({
+            collectionSlug: collection.slug,
+            auditCollectionSlug: config.auditCollectionSlug,
+            fieldsToTrack: watchedConfig.fields,
+            trackedFields: config.trackedFields,
+            logUser: config.logUser,
+          })
 
           collection.hooks = {
             ...collection.hooks,
-            ...addAuditHooks({
-              collectionSlug: collection.slug,
-              auditCollectionSlug: config.auditCollectionSlug,
-              fieldsToTrack,
-              trackedFields: config.trackedFields,
-              logUser: config.logUser,
-              logTimestamp: config.logTimestamp,
-            }),
+            ...hooks,
           }
         }
 

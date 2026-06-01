@@ -1,5 +1,4 @@
-import React from 'react'
-import type { ArrayFieldClientComponent } from 'payload'
+import React, { useState } from 'react'
 
 interface Change {
   field: string
@@ -13,6 +12,13 @@ interface ChangesLogEntry {
   operation: 'create' | 'update' | 'delete' | 'restore'
   userId?: string
   changes?: Change[]
+}
+
+interface ChangesLogFieldProps {
+  field: {
+    value: ChangesLogEntry[]
+  }
+  path: string
 }
 
 const operationLabels: Record<string, string> = {
@@ -29,13 +35,13 @@ const operationColors: Record<string, string> = {
   restore: '#f59e0b',
 }
 
-export const ChangesLogField: ArrayFieldClientComponent = ({ field, path }) => {
-  const [expanded, setExpanded] = React.useState<Record<number, boolean>>({})
+export const ChangesLogField: React.FC<ChangesLogFieldProps> = ({ field }) => {
+  const [expanded, setExpanded] = useState<Record<number, boolean>>({})
 
-  const value = (field.value as ChangesLogEntry[]) || []
+  const value = field.value || []
 
-  const toggleExpand = (index: number) => {
-    setExpanded((prev) => ({ ...prev, [index]: !prev[index] }))
+  const toggleExpand = (index: number): void => {
+    setExpanded((prev: Record<number, boolean>) => ({ ...prev, [index]: !prev[index] }))
   }
 
   const formatValue = (val: unknown): string => {
@@ -67,7 +73,7 @@ export const ChangesLogField: ArrayFieldClientComponent = ({ field, path }) => {
         Historial de cambios ({value.length})
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {value.map((entry, index) => (
+        {value.map((entry: ChangesLogEntry, index: number) => (
           <div
             key={index}
             style={{
@@ -125,7 +131,7 @@ export const ChangesLogField: ArrayFieldClientComponent = ({ field, path }) => {
                     </tr>
                   </thead>
                   <tbody>
-                    {entry.changes.map((change, cIndex) => (
+                    {entry.changes.map((change: Change, cIndex: number) => (
                       <tr key={cIndex} style={{ borderBottom: '1px solid #f3f4f6' }}>
                         <td style={{ padding: '8px', fontWeight: 500 }}>
                           {change.label || change.field}
@@ -166,3 +172,5 @@ export const ChangesLogField: ArrayFieldClientComponent = ({ field, path }) => {
     </div>
   )
 }
+
+export { ChangesLogField as default }

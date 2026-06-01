@@ -3,7 +3,7 @@ import type {
   CollectionAfterDeleteHook,
   CollectionBeforeChangeHook,
 } from 'payload'
-import type { SanitizedAuditLogConfig, AuditLogEntry } from '../types.js'
+import type { SanitizedAuditLogConfig, AuditLogEntry } from '../../types.js'
 
 interface HookConfig {
   collectionSlug: string
@@ -19,8 +19,8 @@ const getFieldsToTrack = (config: HookConfig): string[] | null => {
 }
 
 const detectChanges = (
-  originalDoc: Record<string, any>,
-  data: Record<string, any>,
+  originalDoc: Record<string, unknown>,
+  data: Record<string, unknown>,
   fieldsToTrack: string[] | null
 ): Array<{ field: string; label?: string; oldValue?: unknown; newValue?: unknown }> => {
   const changes: Array<{ field: string; label?: string; oldValue?: unknown; newValue?: unknown }> = []
@@ -51,8 +51,8 @@ export const createAuditHooks = (config: HookConfig) => {
       const fieldsToTrack = getFieldsToTrack(config)
 
       if (operation === 'update' && originalDoc) {
-        const changes = detectChanges(originalDoc, data, fieldsToTrack)
-        ;(data as any).__auditChanges = changes
+        const changes = detectChanges(originalDoc as Record<string, unknown>, data as Record<string, unknown>, fieldsToTrack)
+        ;(data as Record<string, unknown>).__auditChanges = changes
       }
     }
     return data
@@ -70,16 +70,16 @@ export const createAuditHooks = (config: HookConfig) => {
     let changes: Array<{ field: string; label?: string; oldValue?: unknown; newValue?: unknown }> = []
 
     if (operation === 'update') {
-      changes = (doc as any).__auditChanges || []
+      changes = ((doc as Record<string, unknown>).__auditChanges as typeof changes) || []
       if (changes.length === 0) {
-        changes = detectChanges(previousDoc || {}, doc, fieldsToTrack)
+        changes = detectChanges(previousDoc as Record<string, unknown> || {}, doc as Record<string, unknown>, fieldsToTrack)
       }
     } else if (operation === 'create') {
       for (const key of Object.keys(doc)) {
         if (!key.startsWith('_') && key !== 'id' && key !== 'createdAt' && key !== 'updatedAt') {
           changes.push({
             field: key,
-            newValue: doc[key as keyof typeof doc],
+            newValue: (doc as Record<string, unknown>)[key],
           })
         }
       }
@@ -97,7 +97,7 @@ export const createAuditHooks = (config: HookConfig) => {
     try {
       await req.payload.create({
         collection: config.auditCollectionSlug,
-        data: auditEntry as any,
+        data: auditEntry as Record<string, unknown>,
         req,
       })
     } catch (error) {
@@ -126,7 +126,7 @@ export const createAuditHooks = (config: HookConfig) => {
     try {
       await req.payload.create({
         collection: config.auditCollectionSlug,
-        data: auditEntry as any,
+        data: auditEntry as Record<string, unknown>,
         req,
       })
     } catch (error) {
