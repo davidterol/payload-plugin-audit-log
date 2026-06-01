@@ -1,0 +1,33 @@
+{
+  "name": "payload-plugin-audit-log",
+  "version": "1.0.0",
+  "description": "Audit log plugin for Payload CMS - tracks field-level changes on documents",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc --emitDeclarationOnly --outDir dist && tsc",
+    "clean": "rimraf dist",
+    "prepublishOnly": "npm run clean && npm run build"
+  },
+  "dependencies": {
+    "@payloadcms/translations": "^3.0.0"
+  },
+  "devDependencies": {
+    "payload": "^3.0.0",
+    "rimraf": "^5.0.0",
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "payload": "^3.0.0"
+  },
+  "keywords": ["payload", "cms", "audit", "log", "history", "tracking"],
+  "license": "MIT"
+}
